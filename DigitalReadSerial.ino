@@ -1,41 +1,48 @@
-/******************************************************************************
-Heart_Rate_Display.ino
-Demo Program for AD8232 Heart Rate sensor.
-Casey Kuhns @ SparkFun Electronics
-6/27/2014
-https://github.com/sparkfun/AD8232_Heart_Rate_Monitor
-The AD8232 Heart Rate sensor is a low cost EKG/ECG sensor.  This example shows
-how to create an ECG with real time display.  The display is using Processing.
-This sketch is based heavily on the Graphing Tutorial provided in the Arduino
-IDE. http://www.arduino.cc/en/Tutorial/Graph
-Resources:
-This program requires a Processing sketch to view the data in real time.
-Development environment specifics:
-  IDE: Arduino 1.0.5
-  Hardware Platform: Arduino Pro 3.3V/8MHz
-  AD8232 Heart Monitor Version: 1.0
-This code is beerware. If you see me (or any other SparkFun employee) at the
-local pub, and you've found our code helpful, please buy us a round!
-Distributed as-is; no warranty is given.
-******************************************************************************/
+/*
+  Example Bluetooth Serial Passthrough Sketch
+ by: Jim Lindblom
+ SparkFun Electronics
+ date: February 26, 2013
+ license: Public domain
 
-void setup() {
-  // initialize the serial communication:
-  Serial.begin(9600);
-  pinMode(10, INPUT); // Setup for leads off detection LO +
-  pinMode(11, INPUT); // Setup for leads off detection LO -
+ This example sketch converts an RN-42 bluetooth module to
+ communicate at 9600 bps (from 115200), and passes any serial
+ data between Serial Monitor and bluetooth module.
+ */
+#include <SoftwareSerial.h>  
 
+int bluetoothTx = 2;  // TX-O pin of bluetooth mate, Arduino D2
+int bluetoothRx = 3;  // RX-I pin of bluetooth mate, Arduino D3
+
+SoftwareSerial bluetooth(bluetoothTx, bluetoothRx);
+
+void setup()
+{
+  Serial.begin(9600);  // Begin the serial monitor at 9600bps
+
+  bluetooth.begin(115200);  // The Bluetooth Mate defaults to 115200bps
+  bluetooth.print("$");  // Print three times individually
+  bluetooth.print("$");
+  bluetooth.print("$");  // Enter command mode
+  delay(100);  // Short delay, wait for the Mate to send back CMD
+  bluetooth.println("U,9600,N");  // Temporarily Change the baudrate to 9600, no parity
+  // 115200 can be too fast at times for NewSoftSerial to relay the data reliably
+  bluetooth.begin(9600);  // Start bluetooth serial at 9600
 }
 
-void loop() {
-  
-  if((digitalRead(10) == 1)||(digitalRead(11) == 1)){
-    Serial.println('!');
+void loop()
+{
+  int rawX = analogRead(A0);
+  if(bluetooth.available())  // If the bluetooth sent any characters
+  {
+    // Send any characters the bluetooth prints to the serial monitor
+    Serial.print((char)bluetooth.read());
+    //Serial.println(rawX);
   }
-  else{
-    // send the value of analog input 0:
-      Serial.println(analogRead(A0));
+  if(Serial.available())  // If stuff was typed in the serial monitor
+  {
+    // Send any characters the Serial monitor prints to the bluetooth
+    bluetooth.print((char)Serial.read());
   }
-  //Wait for a bit to keep serial data from saturating
-  delay(1);
+  // and loop forever and ever!
 }
