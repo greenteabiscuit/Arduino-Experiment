@@ -3,7 +3,16 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+
+// For BME680
 #include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_Sensor.h>
+#include "Adafruit_BME680.h"
+
+TwoWire I2CBME = TwoWire(0);
+Adafruit_BME680 bme; // I2C
+
 
 BLECharacteristic *pCharacteristic_X;
 BLECharacteristic *pCharacteristic_Y;
@@ -22,6 +31,10 @@ uint8_t accel_sensor_value_z = 0;
 #define CHARACTERISTIC_UUID_ACCEL_Y "a570dd86-0218-4848-a9e5-ada20d43fb1d"
 #define CHARACTERISTIC_UUID_ACCEL_Z "1b5cbd6e-85b3-4528-ab1b-cd5fb8d85380"
 
+#define I2C_SDA 18
+#define I2C_SCL 19
+#define SEALEVELPRESSURE_HPA (1013.25)
+
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
       deviceConnected = true;
@@ -34,6 +47,25 @@ class MyServerCallbacks: public BLEServerCallbacks {
 
 void setup() {
   Serial.begin(115200);
+  if (!I2CBME.begin(I2C_SDA, I2C_SCL, 100000)) {
+    Serial.println("Could not find a valid BME680 sensor, check wiring!");
+  }
+
+  bool status;
+
+  // default settings
+  // (you can also pass in a Wire library object like &Wire2)
+  status = bme.begin(0x76, &I2CBME);  
+  if (!status) {
+    Serial.println("Could not find a valid BME280 sensor, check wiring!");
+  }
+
+  // Set up oversampling and filter initialization
+  bme.setTemperatureOversampling(BME680_OS_8X);
+  bme.setHumidityOversampling(BME680_OS_2X);
+  bme.setPressureOversampling(BME680_OS_4X);
+  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
+  bme.setGasHeater(320, 150); // 320*C for 150 ms
 
   // Create the BLE Device
   BLEDevice::init("NefryBT");
@@ -111,6 +143,25 @@ void loop() {
     pCharacteristic_Z->notify();
     //pCharacteristic->indicate();
     // value++;
+    Serial.print("Temperature = ");
+    Serial.print(bme.temperature);
+    Serial.println(" *C");
+  
+    Serial.print("Pressure = ");
+    Serial.print(bme.pressure / 100.0);
+    Serial.println(" hPa");
+  
+    Serial.print("Humidity = ");
+    Serial.print(bme.humidity);
+    Serial.println(" %");
+  
+    Serial.print("Gas = ");
+    Serial.print(bme.gas_resistance / 1000.0);
+    Serial.println(" KOhms");
+  
+    Serial.print("Approx. Altitude = ");
+    Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
+    Serial.println(" m");
   }
   delay(2000);
 }
