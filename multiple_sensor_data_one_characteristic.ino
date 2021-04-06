@@ -118,6 +118,10 @@ void loop() {
     multiSensorData.values[0] = accel_sensor_value_x;
     multiSensorData.values[1] = accel_sensor_value_y;
     multiSensorData.values[2] = accel_sensor_value_z;
+    multiSensorData.values[3] = int(bme.temperature);
+    multiSensorData.values[4] = int(bme.humidity);
+    multiSensorData.values[5] = int(bme.gas_resistance / 1000.0);
+    multiSensorData.values[6] = int(bme.pressure / 1000.0); // hectopascalではなく1000で割っている
     multiSensorDataCharacteristic->setValue( multiSensorData.bytes, sizeof multiSensorData.bytes );
     Serial.println(sizeof multiSensorData.bytes);
     for ( int i = 0; i < sizeof multiSensorData.bytes; i++ )
