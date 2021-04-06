@@ -19,7 +19,7 @@ union multi_sensor_data
 {
   struct __attribute__( ( packed ) )
   {
-    float values[NUMBER_OF_SENSORS];
+    uint8_t values[NUMBER_OF_SENSORS];
   };
   uint8_t bytes[ NUMBER_OF_SENSORS * sizeof( float ) ];
 };
@@ -98,10 +98,18 @@ void loop() {
     Serial.printf(buffer);
     for ( int i = 0; i < NUMBER_OF_SENSORS; i++ )
     {
-      multiSensorData.values[i] = multiSensorData.values[i] + 0.1;
+      multiSensorData.values[i] = i;
     }
     multiSensorDataCharacteristic->setValue( multiSensorData.bytes, sizeof multiSensorData.bytes );
     Serial.println(sizeof multiSensorData.bytes);
+    for ( int i = 0; i < sizeof multiSensorData.bytes; i++ )
+    {
+      Serial.print(multiSensorData.values[i]);
+      Serial.print(" ");
+    }
+    Serial.println();
+    
+    
     multiSensorDataCharacteristic->notify();
 
   }
