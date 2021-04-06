@@ -40,6 +40,10 @@ const setNotifications = (characteristic) => {
   // Add Event
   characteristic.addEventListener('characteristicvaluechanged', (event) => {
     const value = event.target.value
+    var z = new Uint8Array(value.buffer)
+    // z is uint8 array、これで加速度データを正常に読める
+    // 参考：https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
+    console.log(z)
 
     // データをパース
     const decoder = new TextDecoder('utf-8')
