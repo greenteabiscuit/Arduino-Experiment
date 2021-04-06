@@ -1,4 +1,4 @@
-#include <Nefry.h>
+
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
@@ -81,11 +81,11 @@ void setup() {
 void loop() {
 
   if (deviceConnected) {
-    accel_sensor_value_x = analogRead(32);
-    accel_sensor_value_y = analogRead(35);
-    accel_sensor_value_z = analogRead(34);
+    accel_sensor_value_x = analogRead(34); // for universal, x is 32
+    accel_sensor_value_y = analogRead(32); // for universal, y is 35
+    accel_sensor_value_z = analogRead(35); //for universal, z is 34
     // Serial.printf("*** NOTIFY: %d ***\n", value);
-    Serial.printf("*** NOTIFY: %d ***\n", accel_sensor_value_x);
+    Serial.printf("*** NOTIFY ***\n");
     char buffer[32];
     // sprintf(buffer, "{\"val\":%d}", value);
     sprintf(buffer, "{\"val_accel_x\":%d}", accel_sensor_value_x);
