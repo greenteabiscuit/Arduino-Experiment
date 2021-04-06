@@ -96,7 +96,12 @@ void loop() {
 
     sprintf(buffer, "{\"val_accel_z\":%d}", accel_sensor_value_z);
     Serial.printf(buffer);
+    for ( int i = 0; i < NUMBER_OF_SENSORS; i++ )
+    {
+      multiSensorData.values[i] = multiSensorData.values[i] + 0.1;
+    }
     multiSensorDataCharacteristic->setValue( multiSensorData.bytes, sizeof multiSensorData.bytes );
+    Serial.println(sizeof multiSensorData.bytes);
     multiSensorDataCharacteristic->notify();
 
   }
