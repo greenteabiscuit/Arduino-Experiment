@@ -1,5 +1,6 @@
 /*
  *  Copyright(C) 2018 by Yukiya Ishioka
+ *  https://qiita.com/Yukiya_Ishioka/items/ae21b4a1aecf69a885f2
  */
 
 #include <freertos/FreeRTOS.h>    /* FreeRTOSを用いるためのヘッダファイル */
