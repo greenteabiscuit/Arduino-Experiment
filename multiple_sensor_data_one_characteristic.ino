@@ -8,6 +8,9 @@
 
 #include <Wire.h>
 #include <SPI.h>
+#include <Adafruit_MLX90614.h>
+
+Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 
 uint8_t accel_sensor_value_x = 0;
 uint8_t accel_sensor_value_y = 0;
@@ -17,8 +20,8 @@ bool deviceConnected = false;
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 
-#define I2C_SDA 23
-#define I2C_SCL 22
+#define I2C_SDA 23 // v216のBME680のSDAは23
+#define I2C_SCL 17 // v216のBME680のSCLは17
 TwoWire I2CBME = TwoWire(0);
 Adafruit_BME680 bme(&I2CBME); // I2C
 
@@ -55,7 +58,7 @@ class MyServerCallbacks: public BLEServerCallbacks {
 
 void setup() {
   Serial.begin(9600);
-  I2CBME.begin(I2C_SDA, I2C_SCL, 100000);
+  I2CBME.begin(I2C_SDA, I2C_SCL, 50000);
   if (!bme.begin()) {
     Serial.println("Could not find a valid BME680 sensor, check wiring!");
   }
@@ -95,11 +98,16 @@ void setup() {
   // Start advertising
   pServer->getAdvertising()->start();
   Serial.println("Waiting a client connection to notify...");
+  if (!mlx.begin()) {
+    Serial.println("unable to start mlx");  
+  }
 }
 
 void loop() {
 
   if (deviceConnected) {
+    Serial.println(mlx.readAmbientTempC());
+    Serial.println(mlx.readObjectTempC());
     accel_sensor_value_x = analogRead(34); // for universal, x is 32
     accel_sensor_value_y = analogRead(32); // for universal, y is 35
     accel_sensor_value_z = analogRead(35); //for universal, z is 34
