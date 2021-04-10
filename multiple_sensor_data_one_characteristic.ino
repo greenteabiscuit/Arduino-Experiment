@@ -17,6 +17,9 @@ uint8_t accel_sensor_value_x = 0;
 uint8_t accel_sensor_value_y = 0;
 uint8_t accel_sensor_value_z = 0;
 
+float ambientTemp = 0;
+float objectTemp = 0;
+
 bool deviceConnected = false;
 
 #define SEALEVELPRESSURE_HPA (1013.25)
@@ -110,8 +113,10 @@ void setup() {
 void loop() {
 
   if (deviceConnected) {
-    Serial.println(mlx.readAmbientTempC());
-    Serial.println(mlx.readObjectTempC());
+    ambientTemp = mlx.readAmbientTempC();
+    objectTemp = mlx.readObjectTempC();
+    Serial.println(ambientTemp);
+    Serial.println(objectTemp);
     accel_sensor_value_x = analogRead(34); // for universal, x is 32
     accel_sensor_value_y = analogRead(32); // for universal, y is 35
     accel_sensor_value_z = analogRead(35); //for universal, z is 34
@@ -134,6 +139,8 @@ void loop() {
     multiSensorData.values[4] = int(bme.humidity);
     multiSensorData.values[5] = int(bme.gas_resistance / 1000.0);
     multiSensorData.values[6] = int(bme.pressure / 1000.0); // hectopascalではなく1000で割っている
+    multiSensorData.values[7] = int(ambientTemp);
+    multiSensorData.values[8] = int(objectTemp); 
     multiSensorDataCharacteristic->setValue( multiSensorData.bytes, sizeof multiSensorData.bytes );
     Serial.println(sizeof multiSensorData.bytes);
     for ( int i = 0; i < sizeof multiSensorData.bytes; i++ )
