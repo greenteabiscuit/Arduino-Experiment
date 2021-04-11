@@ -12,10 +12,13 @@
 #include <SPI.h>
 #include <Adafruit_MLX90614.h>
 
+TwoWire I2CBME = TwoWire(0);
+Adafruit_BME680 bme(&I2CBME); // I2C
+
 TwoWire I2CMLX = TwoWire(1);
 Adafruit_MLX90614 mlx = Adafruit_MLX90614(0x5A, &I2CMLX);
 
-TwoWire I2CMAX30002 = TwoWire(2);
+TwoWire I2CMAX30105 = TwoWire(2);
 MAX30105 particleSensor;
 
 int32_t bufferLength; //data length
@@ -41,8 +44,6 @@ bool deviceConnected = false;
 #define I2C_SCL 22 // v216のBME680のSCLは17
 #define I2C_MAX30002_SCL 18
 #define I2C_MAX30002_SDA 19
-TwoWire I2CBME = TwoWire(0);
-Adafruit_BME680 bme(&I2CBME); // I2C
 
 #define NUMBER_OF_SENSORS 4
 
@@ -163,17 +164,13 @@ void  task_heart_rate( void *param )
 
 void setup() {
   Serial.begin(115200);
-  I2CBME.begin(I2C_BME680_SDA, I2C_BME680_SCL);
-  I2CMLX.begin(I2C_SDA, I2C_SCL);
+  I2CBME.begin(I2C_BME680_SDA, I2C_BME680_SCL, 0x77);
+  I2CMLX.begin(I2C_SDA, I2C_SCL, 0x5A);
+  I2CMAX30105.begin(I2C_MAX30002_SDA, I2C_MAX30002_SCL, 0x57);
   if (!bme.begin()) {
     Serial.println("Could not find a valid BME680 sensor, check wiring!");
   }
-  //I2CMAX30002.begin(I2C_MAX30002_SDA, I2C_MAX30002_SCL);
-  // Initialize heart ratesensor
-  //if (!particleSensor.begin(I2CMAX30002, 10000))
-  //{
-    //Serial.println(F("MAX30105 was not found. Please check wiring/power."));
-  //}
+
   // Set up oversampling and filter initialization
   bme.setTemperatureOversampling(BME680_OS_8X);
   bme.setHumidityOversampling(BME680_OS_2X);
@@ -213,6 +210,12 @@ void setup() {
   if (!mlx.begin()) {
     Serial.println("unable to start mlx");  
   }
+  //I2CMAX30105.begin(I2C_MAX30002_SDA, I2C_MAX30002_SCL, 0x57);
+  // Initialize heart ratesensor
+  //if (!particleSensor.begin(&I2CMAX30105, 100000, 0x57))
+  //{
+    //Serial.println(F("MAX30105 was not found. Please check wiring/power."));
+  //}
 
   //byte ledBrightness = 60; //Options: 0=Off to 255=50mA
   //byte sampleAverage = 4; //Options: 1, 2, 4, 8, 16, 32
