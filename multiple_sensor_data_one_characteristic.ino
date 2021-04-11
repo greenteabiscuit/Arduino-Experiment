@@ -164,12 +164,17 @@ void  task_heart_rate( void *param )
 
 void setup() {
   Serial.begin(115200);
-  I2CBME.begin(I2C_BME680_SDA, I2C_BME680_SCL, 0x77);
-  I2CMLX.begin(I2C_SDA, I2C_SCL, 0x5A);
+  // Initialize heart ratesensor
   I2CMAX30105.begin(I2C_MAX30002_SDA, I2C_MAX30002_SCL, 0x57);
-  if (!bme.begin()) {
+  if (!particleSensor.begin(I2CMAX30105, 50000, 0x57))
+  {
+    Serial.println(F("MAX30105 was not found. Please check wiring/power."));
+  }
+  I2CBME.begin(I2C_BME680_SDA, I2C_BME680_SCL, 0x77);
+  if (!bme.begin(0x77, true)) {
     Serial.println("Could not find a valid BME680 sensor, check wiring!");
   }
+  I2CMLX.begin(I2C_SDA, I2C_SCL, 0x5A);
 
   // Set up oversampling and filter initialization
   bme.setTemperatureOversampling(BME680_OS_8X);
@@ -210,12 +215,6 @@ void setup() {
   if (!mlx.begin()) {
     Serial.println("unable to start mlx");  
   }
-  //I2CMAX30105.begin(I2C_MAX30002_SDA, I2C_MAX30002_SCL, 0x57);
-  // Initialize heart ratesensor
-  //if (!particleSensor.begin(&I2CMAX30105, 100000, 0x57))
-  //{
-    //Serial.println(F("MAX30105 was not found. Please check wiring/power."));
-  //}
 
   //byte ledBrightness = 60; //Options: 0=Off to 255=50mA
   //byte sampleAverage = 4; //Options: 1, 2, 4, 8, 16, 32
