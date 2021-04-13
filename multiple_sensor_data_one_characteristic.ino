@@ -13,13 +13,13 @@
 #include <Adafruit_MLX90614.h>
 
 TwoWire I2CBME = TwoWire(0);
-Adafruit_BME680 bme(&I2CBME); // I2C
+Adafruit_BME680 bme(0x77, &I2CBME); // I2C
 
 TwoWire I2CMLX = TwoWire(1);
 Adafruit_MLX90614 mlx = Adafruit_MLX90614(0x5A, &I2CMLX);
 
 TwoWire I2CMAX30105 = TwoWire(2);
-MAX30105 particleSensor;
+MAX30105 particleSensor(0x57 ,&I2CMAX30105);
 
 int32_t bufferLength; //data length
 int32_t spo2; //SPO2 value
@@ -42,8 +42,8 @@ bool deviceConnected = false;
 #define I2C_BME680_SCL 17 // v216のBME680のSCLは17
 #define I2C_SDA 21 // v216のBME680のSDAは23
 #define I2C_SCL 22 // v216のBME680のSCLは17
-#define I2C_MAX30002_SCL 18
-#define I2C_MAX30002_SDA 19
+#define I2C_MAX30105_SCL 18
+#define I2C_MAX30105_SDA 19
 
 #define NUMBER_OF_SENSORS 4
 
@@ -89,92 +89,14 @@ class MyServerCallbacks: public BLEServerCallbacks {
     }
 };
 
-void  task_heart_rate( void *param )
-{
-  Serial.println("heartrate");
-  if (deviceConnected) {
-    bufferLength = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
-  
-    //read the first 100 samples, and determine the signal range
-    for (byte i = 0 ; i < bufferLength ; i++)
-    {
-      while (particleSensor.available() == false) {//do we have new data?
-        Serial.println("no data");
-        particleSensor.check(); //Check the sensor for new data
-      }
-      redBuffer[i] = particleSensor.getRed();
-      irBuffer[i] = particleSensor.getIR();
-      particleSensor.nextSample(); //We're finished with this sample so move to next sample
-  
-      Serial.print(F("red="));
-      Serial.print(redBuffer[i], DEC);
-      Serial.print(F(", ir="));
-      Serial.println(irBuffer[i], DEC);
-    }
-  
-    //calculate heart rate and SpO2 after first 100 samples (first 4 seconds of samples)
-    maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
-    
-    while( 1 ) {
-        //dumping the first 25 sets of samples in the memory and shift the last 75 sets of samples to the top
-        for (byte i = 25; i < 100; i++)
-        {
-          redBuffer[i - 25] = redBuffer[i];
-          irBuffer[i - 25] = irBuffer[i];
-        }
-    
-        //take 25 sets of samples before calculating the heart rate.
-        for (byte i = 75; i < 100; i++)
-        {
-          while (particleSensor.available() == false) //do we have new data?
-            particleSensor.check(); //Check the sensor for new data
-    
-          digitalWrite(readLED, !digitalRead(readLED)); //Blink onboard LED with every data read
-    
-          redBuffer[i] = particleSensor.getRed();
-          irBuffer[i] = particleSensor.getIR();
-          particleSensor.nextSample(); //We're finished with this sample so move to next sample
-    
-          //send samples and calculation result to terminal program through UART
-          Serial.print(F("red="));
-          Serial.print(redBuffer[i], DEC);
-          Serial.print(F(", ir="));
-          Serial.print(irBuffer[i], DEC);
-    
-          Serial.print(F(", HR="));
-          Serial.print(heartRate, DEC);
-    
-          Serial.print(F(", HRvalid="));
-          Serial.print(validHeartRate, DEC);
-    
-          Serial.print(F(", SPO2="));
-          Serial.print(spo2, DEC);
-    
-          Serial.print(F(", SPO2Valid="));
-          Serial.println(validSPO2, DEC);
-        }
-    
-        //After gathering 25 new samples recalculate HR and SP02
-        maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
-        vTaskDelay(2000);
-    }
-
-  }
-}
-
 void setup() {
   Serial.begin(115200);
-  // Initialize heart ratesensor
-  I2CMAX30105.begin(I2C_MAX30002_SDA, I2C_MAX30002_SCL, 0x57);
-  if (!particleSensor.begin(I2CMAX30105, 50000, 0x57))
-  {
-    Serial.println(F("MAX30105 was not found. Please check wiring/power."));
-  }
+  
   I2CBME.begin(I2C_BME680_SDA, I2C_BME680_SCL, 0x77);
-  if (!bme.begin(0x77, true)) {
+  
+  if (!bme.begin(0x77, false)) {
     Serial.println("Could not find a valid BME680 sensor, check wiring!");
   }
-  I2CMLX.begin(I2C_SDA, I2C_SCL, 0x5A);
 
   // Set up oversampling and filter initialization
   bme.setTemperatureOversampling(BME680_OS_8X);
@@ -182,6 +104,27 @@ void setup() {
   bme.setPressureOversampling(BME680_OS_4X);
   bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
   bme.setGasHeater(320, 150); // 320*C for 150 ms
+
+
+  // Initialize heart ratesensor
+  I2CMAX30105.begin(I2C_MAX30105_SDA, I2C_MAX30105_SCL, 0x57);
+  if (!particleSensor.begin(50000, 0x57))
+  {
+    Serial.println(F("MAX30105 was not found. Please check wiring/power."));
+  }
+  byte ledBrightness = 60; //Options: 0=Off to 255=50mA
+  byte sampleAverage = 4; //Options: 1, 2, 4, 8, 16, 32
+  byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
+  byte sampleRate = 100; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
+  int pulseWidth = 411; //Options: 69, 118, 215, 411
+  int adcRange = 4096; //Options: 2048, 4096, 8192, 16384
+
+  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
+  
+  I2CMLX.begin(I2C_SDA, I2C_SCL, 0x5A);
+  if (!mlx.begin()) {
+    Serial.println("unable to start mlx");  
+  }
 
   // Create the BLE Device
   BLEDevice::init("Up Bluetooth Device");
@@ -212,23 +155,65 @@ void setup() {
   // Start advertising
   pServer->getAdvertising()->start();
   Serial.println("Waiting a client connection to notify...");
-  if (!mlx.begin()) {
-    Serial.println("unable to start mlx");  
-  }
-
-  byte ledBrightness = 60; //Options: 0=Off to 255=50mA
-  byte sampleAverage = 4; //Options: 1, 2, 4, 8, 16, 32
-  byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
-  byte sampleRate = 100; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
-  int pulseWidth = 411; //Options: 69, 118, 215, 411
-  int adcRange = 4096; //Options: 2048, 4096, 8192, 16384
-
-  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
 }
 
 void loop() {
 
   if (deviceConnected) {
+    bufferLength = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
+    //read the first 100 samples, and determine the signal range
+    for (byte i = 0 ; i < bufferLength ; i++)
+    {
+      while (particleSensor.available() == false) {//do we have new data?
+        particleSensor.check(); //Check the sensor for new data
+      }
+      redBuffer[i] = particleSensor.getRed();
+      irBuffer[i] = particleSensor.getIR();
+      particleSensor.nextSample(); //We're finished with this sample so move to next sample
+
+      if (i % 20 == 0) {
+        Serial.print(i); Serial.println("%");
+        Serial.print(F("red="));
+        Serial.print(redBuffer[i], DEC);
+        Serial.print(F(", ir="));
+        Serial.println(irBuffer[i], DEC); 
+      }
+    }
+  
+    //calculate heart rate and SpO2 after first 100 samples (first 4 seconds of samples)
+    maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
+
+    //send samples and calculation result to terminal program through UART
+    Serial.print(F(", HR="));
+    Serial.print(heartRate, DEC);
+
+    Serial.print(F(", HRvalid="));
+    Serial.print(validHeartRate, DEC);
+
+    Serial.print(F(", SPO2="));
+    Serial.print(spo2, DEC);
+
+    Serial.print(F(", SPO2Valid="));
+    Serial.println(validSPO2, DEC);
+
+    if (validHeartRate == 1) {
+      multiSensorData.values[9] = int(heartRate);
+      multiSensorData.values[10] = int(validHeartRate);
+    } else {
+      multiSensorData.values[9] = 0;
+      multiSensorData.values[10] = int(validHeartRate);
+    }
+
+    if (validSPO2 == 1) {
+      multiSensorData.values[11] = int(spo2);
+      multiSensorData.values[12] = int(validSPO2); 
+    } else {
+      multiSensorData.values[11] = 0;
+      multiSensorData.values[12] = int(validSPO2);       
+    }
+
+    delay(1000);
+    
     ambientTemp = mlx.readAmbientTempC();
     objectTemp = mlx.readObjectTempC();
     Serial.println(ambientTemp);
@@ -236,18 +221,7 @@ void loop() {
     accel_sensor_value_x = analogRead(34); // for universal, x is 32
     accel_sensor_value_y = analogRead(32); // for universal, y is 35
     accel_sensor_value_z = analogRead(35); //for universal, z is 34
-    // Serial.printf("*** NOTIFY: %d ***\n", value);
-    Serial.printf("*** NOTIFY ***\n");
-    char buffer[32];
-    // sprintf(buffer, "{\"val\":%d}", value);
-    sprintf(buffer, "{\"val_accel_x\":%d}", accel_sensor_value_x);
-    Serial.printf(buffer);
 
-    sprintf(buffer, "{\"val_accel_y\":%d}", accel_sensor_value_y);
-    Serial.printf(buffer);
-
-    sprintf(buffer, "{\"val_accel_z\":%d}", accel_sensor_value_z);
-    Serial.printf(buffer);
     multiSensorData.values[0] = accel_sensor_value_x;
     multiSensorData.values[1] = accel_sensor_value_y;
     multiSensorData.values[2] = accel_sensor_value_z;
@@ -289,7 +263,7 @@ void loop() {
     Serial.println(" m");
   
     Serial.println();
-
+    
   }
   delay(2000);
 }
