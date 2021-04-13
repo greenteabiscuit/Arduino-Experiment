@@ -139,7 +139,8 @@ void setup() {
 void loop() {
 
   if (deviceConnected) {
-    bufferLength = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
+    //bufferLength = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
+    bufferLength = 25;
     //read the first 100 samples, and determine the signal range
     for (byte i = 0 ; i < bufferLength ; i++)
     {
@@ -151,7 +152,7 @@ void loop() {
       particleSensor.nextSample(); //We're finished with this sample so move to next sample
 
       if ((i - 1) % 50 == 0) {
-        Serial.print(i); Serial.println("%");
+        Serial.print(i - 1); Serial.println("%");
         Serial.print(F("red="));
         Serial.print(redBuffer[i], DEC);
         Serial.print(F(", ir="));
@@ -163,21 +164,12 @@ void loop() {
     maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
 
     //send samples and calculation result to terminal program through UART
-    Serial.print(F(", HR="));
-    Serial.print(heartRate, DEC);
-
-    Serial.print(F(", HRvalid="));
-    Serial.print(validHeartRate, DEC);
-
-    Serial.print(F(", SPO2="));
-    Serial.print(spo2, DEC);
-
-    Serial.print(F(", SPO2Valid="));
-    Serial.println(validSPO2, DEC);
 
     if (validHeartRate == 1) {
       multiSensorData.values[9] = int(heartRate);
       multiSensorData.values[10] = int(validHeartRate);
+      Serial.print(F(", HR="));
+      Serial.println(heartRate, DEC);
     } else {
       multiSensorData.values[9] = 0;
       multiSensorData.values[10] = int(validHeartRate);
@@ -185,7 +177,9 @@ void loop() {
 
     if (validSPO2 == 1) {
       multiSensorData.values[11] = int(spo2);
-      multiSensorData.values[12] = int(validSPO2); 
+      multiSensorData.values[12] = int(validSPO2);
+      Serial.print(F(", SPO2="));
+      Serial.println(spo2, DEC);
     } else {
       multiSensorData.values[11] = 0;
       multiSensorData.values[12] = int(validSPO2);       
@@ -224,5 +218,5 @@ void loop() {
     multiSensorDataCharacteristic->notify();
     
   }
-  delay(2000);
+  delay(1000);
 }
