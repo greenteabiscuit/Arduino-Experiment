@@ -1,5 +1,4 @@
 #include <Adafruit_Sensor.h>
-#include "Adafruit_BME680.h"
 
 #include <BLEDevice.h>
 #include <BLEServer.h>
@@ -11,9 +10,6 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_MLX90614.h>
-
-TwoWire I2CBME = TwoWire(0);
-Adafruit_BME680 bme(0x77, &I2CBME); // I2C
 
 TwoWire I2CMLX = TwoWire(1);
 Adafruit_MLX90614 mlx = Adafruit_MLX90614(0x5A, &I2CMLX);
@@ -36,12 +32,9 @@ float objectTemp = 0;
 
 bool deviceConnected = false;
 
-#define SEALEVELPRESSURE_HPA (1013.25)
 
-#define I2C_BME680_SDA 23 // v216のBME680のSDAは23
-#define I2C_BME680_SCL 17 // v216のBME680のSCLは17
-#define I2C_SDA 21 // v216のBME680のSDAは23
-#define I2C_SCL 22 // v216のBME680のSCLは17
+#define I2C_SDA 21 //
+#define I2C_SCL 22 //
 #define I2C_MAX30105_SCL 18
 #define I2C_MAX30105_SDA 19
 
@@ -91,20 +84,6 @@ class MyServerCallbacks: public BLEServerCallbacks {
 
 void setup() {
   Serial.begin(115200);
-  
-  I2CBME.begin(I2C_BME680_SDA, I2C_BME680_SCL, 0x77);
-  
-  if (!bme.begin(0x77, false)) {
-    Serial.println("Could not find a valid BME680 sensor, check wiring!");
-  }
-
-  // Set up oversampling and filter initialization
-  bme.setTemperatureOversampling(BME680_OS_8X);
-  bme.setHumidityOversampling(BME680_OS_2X);
-  bme.setPressureOversampling(BME680_OS_4X);
-  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-  bme.setGasHeater(320, 150); // 320*C for 150 ms
-
 
   // Initialize heart ratesensor
   I2CMAX30105.begin(I2C_MAX30105_SDA, I2C_MAX30105_SCL, 0x57);
@@ -171,7 +150,7 @@ void loop() {
       irBuffer[i] = particleSensor.getIR();
       particleSensor.nextSample(); //We're finished with this sample so move to next sample
 
-      if (i % 20 == 0) {
+      if ((i - 1) % 50 == 0) {
         Serial.print(i); Serial.println("%");
         Serial.print(F("red="));
         Serial.print(redBuffer[i], DEC);
@@ -225,10 +204,11 @@ void loop() {
     multiSensorData.values[0] = accel_sensor_value_x;
     multiSensorData.values[1] = accel_sensor_value_y;
     multiSensorData.values[2] = accel_sensor_value_z;
-    multiSensorData.values[3] = int(bme.temperature);
-    multiSensorData.values[4] = int(bme.humidity);
-    multiSensorData.values[5] = int(bme.gas_resistance / 1000.0);
-    multiSensorData.values[6] = int(bme.pressure / 1000.0); // hectopascalではなく1000で割っている
+    // 今後のために一応残しておく
+    //multiSensorData.values[3] = int(bme.temperature);
+    //multiSensorData.values[4] = int(bme.humidity);
+    //multiSensorData.values[5] = int(bme.gas_resistance / 1000.0);
+    //multiSensorData.values[6] = int(bme.pressure / 1000.0); // hectopascalではなく1000で割っている
     multiSensorData.values[7] = int(ambientTemp);
     multiSensorData.values[8] = int(objectTemp); 
     multiSensorDataCharacteristic->setValue( multiSensorData.bytes, sizeof multiSensorData.bytes );
@@ -242,27 +222,6 @@ void loop() {
     
     
     multiSensorDataCharacteristic->notify();
-    Serial.print("Temperature = ");
-    Serial.print(bme.temperature);
-    Serial.println(" *C");
-  
-    Serial.print("Pressure = ");
-    Serial.print(bme.pressure / 100.0);
-    Serial.println(" hPa");
-  
-    Serial.print("Humidity = ");
-    Serial.print(bme.humidity);
-    Serial.println(" %");
-  
-    Serial.print("Gas = ");
-    Serial.print(bme.gas_resistance / 1000.0);
-    Serial.println(" KOhms");
-  
-    Serial.print("Approx. Altitude = ");
-    Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
-    Serial.println(" m");
-  
-    Serial.println();
     
   }
   delay(2000);
